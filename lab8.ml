@@ -122,7 +122,9 @@ decide how to implement this.
 ......................................................................*)
                                                    
   let add_listener (evt : 'a event) (listener : 'a -> unit) : id =
-    failwith "WEvent.add_listener not implemented"
+    let id = new_id () in
+    evt := {id; action = listener} :: !evt;
+    id
 
 (*......................................................................
 Exercise 2: Write remove_listener, which, given an id and an event,
@@ -131,7 +133,7 @@ one. If there is no listener with that id, do nothing.
 ......................................................................*)
             
   let remove_listener (evt : 'a event) (i : id) : unit =
-    failwith "WEvent.remove_listener not implemented"
+    evt := List.filter (fun x -> x.id <> i) !evt
 
 (*......................................................................
 Exercise 3: Write fire_event, which will execute all event handlers
@@ -139,8 +141,7 @@ listening for the event.
 ......................................................................*)
             
   let fire_event (evt : 'a event) (arg : 'a) : unit =
-    failwith "WEvent.fire_event not implemented"
-
+    List.iter (fun {action} -> action arg) !evt
 end
   
 (*====================================================================
@@ -155,8 +156,9 @@ and publish the headlines. *)
 Exercise 4: Given your implementation of Event, create a new event
 called "newswire" that should pass strings to the event handlers.
 ......................................................................*)
-  
-let newswire = fun _ -> failwith "newswire not implemented" ;;
+open WEvent ;;
+
+let newswire : string event = new_event () ;; 
 
 (* News organizations might want to register event listeners to the
 newswire so that they might report on stories. Below are functions
@@ -174,7 +176,8 @@ Exercise 5: Register these two news organizations as listeners to the
 newswire event.
 ......................................................................*)
   
-(* .. *)
+let id1 = add_listener newswire fakeNewsNetwork ;;
+let id2 = add_listener newswire buzzFake ;;
 
 (* Here are some headlines to play with. *)
 
@@ -187,7 +190,9 @@ Exercise 6: Finally, fire newswire events with the above three
 headlines, and observe what happens!
 ......................................................................*)
   
-(* .. *)
+fire_event newswire h1 ;;
+fire_event newswire h2 ;;
+fire_event newswire h3 ;;
 
 (* Imagine now that you work at Facebook, and you're growing concerned
 with the proliferation of fake news. To combat the problem, you decide
@@ -200,14 +205,15 @@ the publications don't publish right away. *)
 Exercise 7: Remove the newswire listeners that were previously registered.
 ......................................................................*)
 
-(* .. *)
+remove_listener newswire id1 ;;
+remove_listener newswire id2 ;;
 
 (*......................................................................
 Exercise 8: Create a new event called publish to signal that all
 stories should be published. The event should be a unit WEvent.event.
 ......................................................................*)
 
-let publish = fun _ -> failwith "publish not implemented" ;; 
+let publish : unit event = new_event () ;; 
 
 (*......................................................................
 Exercise 9: Write a function receive_report to handle new news
@@ -218,14 +224,16 @@ by registering appropriate listeners, one for each news network,
 waiting for the publish event.
 ......................................................................*)
 
-let receive_report = fun _ -> failwith "report not implemented";;
+let receive_report s =
+  ignore (add_listener publish (fun () -> fakeNewsNetwork s));
+  ignore (add_listener publish (fun () -> buzzFake s)) ;;
 
 (*......................................................................
 Exercise 10: Register the receieve_report listener to listen for the
 newswire event.
 ......................................................................*)
 
-(* .. *)
+add_listener newswire receive_report ;;
 
 (* Here are some new headlines to use for testing this part. *)
 
@@ -239,8 +247,10 @@ properly implemented), the newswire event doesn't immediately print
 the news. (They've just queued up a bunch of listeners on the publish
 event instead.)
 ......................................................................*)
-
-(* .. *)
+  
+fire_event newswire h1 ;;
+fire_event newswire h2 ;;
+fire_event newswire h3 ;;
 
 print_string "Moved to publication.\n" ;;
 
@@ -250,4 +260,5 @@ out the headlines. You should see the headlines printed after
 the line above. 
 ......................................................................*)
 
-(* .. *)
+fire_event publish () ;; 
+
